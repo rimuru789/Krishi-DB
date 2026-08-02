@@ -1,0 +1,16 @@
+### Get all products
+GET http://localhost:8080/api/products
+
+
+### Add product
+POST http://localhost:8080/api/products
+Content-Type: application/json
+
+{
+    "name": "Turmeric Powder",
+    "category": "Spices",
+    "unit": "kg",
+    "sellingPrice": 250,
+    "stockQuantity": 50,
+    "lowStockLevel": 10
+}
