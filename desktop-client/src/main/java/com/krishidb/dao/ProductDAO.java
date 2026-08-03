@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.Statement;
 
 public class ProductDAO {
 
@@ -23,7 +24,11 @@ public class ProductDAO {
                 """;
 
         try (Connection connection = DatabaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement =
+        connection.prepareStatement(
+                sql,
+                Statement.RETURN_GENERATED_KEYS
+        );) {
 
             statement.setString(1, product.getName());
             statement.setString(2, product.getCategory());
@@ -35,7 +40,31 @@ public class ProductDAO {
 
             int rowsAffected = statement.executeUpdate();
 
-            return rowsAffected > 0;
+
+if(rowsAffected > 0){
+
+    ResultSet generatedKeys = statement.getGeneratedKeys();
+
+    if(generatedKeys.next()){
+
+        int productId = generatedKeys.getInt(1);
+
+
+        SyncQueueDAO queueDAO = new SyncQueueDAO();
+
+        queueDAO.addToQueue(
+                "products",
+                productId,
+                "INSERT"
+        );
+
+    }
+
+    return true;
+}
+
+
+return false;
 
         } catch (SQLException e) {
 
@@ -164,6 +193,40 @@ public boolean deleteProduct(int id) {
 
         return false;
     }
+}
+
+// COUNT PENDING SYNC PRODUCTS
+public int getPendingCount(){
+
+    String sql =
+            "SELECT COUNT(*) FROM products WHERE sync_status='PENDING'";
+
+
+    try(Connection connection =
+                DatabaseManager.getConnection();
+
+        PreparedStatement statement =
+                connection.prepareStatement(sql);
+
+        ResultSet resultSet =
+                statement.executeQuery()) {
+
+
+        if(resultSet.next()){
+
+            return resultSet.getInt(1);
+
+        }
+
+
+    } catch(SQLException e){
+
+        e.printStackTrace();
+
+    }
+
+
+    return 0;
 }
 
 

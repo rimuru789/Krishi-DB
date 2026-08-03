@@ -9,7 +9,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
-import javax.swing.RowFilter;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
@@ -582,9 +581,19 @@ searchField.getDocument().addDocumentListener(new DocumentListener(){
     // -------------------------------------------------
 
     public void refreshInventory() {
-
+        System.out.println("Refreshing inventory UI...");
         List<Product> products =
                 productDAO.getAllProducts();
+
+                for(Product p : products){
+
+        System.out.println(
+            p.getName()
+            + " -> "
+            + p.getSyncStatus()
+        );
+
+    }
 
         tableModel.setRowCount(0);
 

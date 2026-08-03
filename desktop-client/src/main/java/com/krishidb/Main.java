@@ -1,6 +1,7 @@
 package com.krishidb;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.krishidb.dao.ProductDAO;
 import com.krishidb.database.DatabaseInitializer;
 import com.krishidb.ui.MainFrame;
 
@@ -23,5 +24,16 @@ public class Main {
 
             mainFrame.setVisible(true);
         });
+
+        ProductDAO dao = new ProductDAO();
+
+System.out.println(
+    "Pending products: "
+    + dao.getPendingCount()
+);
     }
+
+
+    
+    
 }

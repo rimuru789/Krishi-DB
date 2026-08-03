@@ -21,6 +21,9 @@ public class DatabaseManager {
         }
 
         Path databasePath = resolveDatabasePath();
+        System.out.println(
+    "USING DATABASE: " + databasePath.toAbsolutePath()
+);
         String databaseUrl = "jdbc:sqlite:" + databasePath.toAbsolutePath().normalize();
         return DriverManager.getConnection(databaseUrl);
     }

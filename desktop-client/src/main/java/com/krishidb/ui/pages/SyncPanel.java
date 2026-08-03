@@ -93,6 +93,7 @@ if(result){
         "Products synced successfully!"
     );
     mainFrame.updateSidebarStatus(true,0);
+    mainFrame.refreshInventory();
 
 }
 else{

@@ -155,12 +155,19 @@ String json =
 
             if(response.statusCode()==200){
 
-    boolean updated = markAsSynced(product.getId());
+    boolean updated =
+            markAsSynced(product.getId());
+
+
+    boolean queueUpdated =
+            markQueueCompleted(product.getId());
+
 
     System.out.println(
-            product.getName()
-            + " sync update = "
-            + updated
+        "Product sync = "
+        + updated
+        + " Queue update = "
+        + queueUpdated
     );
 
 }
@@ -189,6 +196,39 @@ else{
 
     }
 
+}
+
+public ResultSet getPendingQueue(){
+
+    String sql =
+    """
+    SELECT *
+    FROM sync_queue
+    WHERE status='PENDING'
+    """;
+
+
+    try {
+
+        Connection connection =
+                DatabaseManager.getConnection();
+
+        PreparedStatement statement =
+                connection.prepareStatement(sql);
+
+
+        return statement.executeQuery();
+
+
+    }
+    catch(SQLException e){
+
+        e.printStackTrace();
+
+    }
+
+
+    return null;
 }
 
 
@@ -221,6 +261,91 @@ else{
         System.out.println("Database rows updated = " + rows);
 
         return rows > 0;
+
+
+    }
+    catch(SQLException e){
+
+        e.printStackTrace();
+
+    }
+
+
+    return false;
+
+
+}
+
+public List<Integer> getPendingQueueIds(){
+
+    List<Integer> ids = new ArrayList<>();
+
+
+    String sql =
+            """
+            SELECT record_id
+            FROM sync_queue
+            WHERE status='PENDING'
+            """;
+
+
+    try(
+        Connection connection =
+                DatabaseManager.getConnection();
+
+        PreparedStatement statement =
+                connection.prepareStatement(sql);
+
+        ResultSet rs =
+                statement.executeQuery()
+    ){
+
+
+        while(rs.next()){
+
+            ids.add(
+                rs.getInt("record_id")
+            );
+
+        }
+
+
+    }
+    catch(SQLException e){
+
+        e.printStackTrace();
+
+    }
+
+
+    return ids;
+
+}
+
+public boolean markQueueCompleted(int productId){
+
+
+    String sql =
+            """
+            UPDATE sync_queue
+            SET status='COMPLETED'
+            WHERE record_id=?
+            """;
+
+
+    try(
+        Connection connection =
+                DatabaseManager.getConnection();
+
+        PreparedStatement statement =
+                connection.prepareStatement(sql)
+    ){
+
+
+        statement.setInt(1, productId);
+
+
+        return statement.executeUpdate()>0;
 
 
     }
