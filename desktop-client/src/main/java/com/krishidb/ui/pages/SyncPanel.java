@@ -7,12 +7,24 @@ import java.awt.*;
 import com.krishidb.dao.SyncDAO;
 import com.krishidb.ui.MainFrame;
 
+import com.krishidb.dao.SyncQueueDAO;
+import com.krishidb.model.SyncRecord;
+
+import javax.swing.table.DefaultTableModel;
+import java.util.List;
+
 
 
 public class SyncPanel extends JPanel {
 
     private MainFrame mainFrame;
-    private JLabel statusLabel;
+
+        private JLabel statusLabel;
+        private JLabel pendingLabel;
+        private JLabel lastSyncLabel;
+
+        private JTable historyTable;
+        private DefaultTableModel historyModel;
 
 
     public SyncPanel(MainFrame mainFrame){
@@ -52,11 +64,7 @@ public class SyncPanel extends JPanel {
 
 
 
-        JPanel center =
-                new JPanel(
-                        new GridBagLayout()
-                );
-
+        
 
         JButton syncButton =
                 new JButton("Sync Now");
@@ -72,6 +80,21 @@ public class SyncPanel extends JPanel {
                 new JLabel(
                         "Ready to sync"
                 );
+
+                JPanel center =
+        new JPanel(
+                new BorderLayout()
+        );
+
+
+center.setBorder(
+        BorderFactory.createEmptyBorder(
+                20,
+                30,
+                20,
+                30
+        )
+);
 
 
         syncButton.addActionListener(e -> {
@@ -92,8 +115,9 @@ if(result){
         this,
         "Products synced successfully!"
     );
-    mainFrame.updateSidebarStatus(true,0);
+    
     mainFrame.refreshInventory();
+    loadSyncHistory();
 
 }
 else{
@@ -109,19 +133,64 @@ else{
 
 });
 
+JPanel actionPanel =
+        new JPanel(
+                new FlowLayout()
+        );
 
 
-        JPanel box =
-                new JPanel();
+actionPanel.add(syncButton);
+actionPanel.add(statusLabel);
 
 
-        box.add(syncButton);
+center.add(
+        actionPanel,
+        BorderLayout.CENTER
+);
 
-        box.add(statusLabel);
+
+        
+
+        String[] columns =
+{
+    "Table",
+    "Operation",
+    "Status",
+    "Time"
+};
 
 
+historyModel =
+        new DefaultTableModel(columns,0);
 
-        center.add(box);
+
+historyTable =
+        new JTable(historyModel);
+
+
+JScrollPane scrollPane =
+        new JScrollPane(historyTable);
+
+
+scrollPane.setBorder(
+        BorderFactory.createTitledBorder(
+                "Sync History"
+        )
+);
+
+
+scrollPane.setPreferredSize(
+        new Dimension(
+                900,
+                300
+        )
+);
+
+
+center.add(
+        scrollPane,
+        BorderLayout.SOUTH
+);
 
 
 
@@ -131,5 +200,37 @@ else{
         );
 
     }
+
+
+    private void loadSyncHistory(){
+
+
+    historyModel.setRowCount(0);
+
+
+    SyncQueueDAO dao =
+            new SyncQueueDAO();
+
+
+    List<SyncRecord> records =
+            dao.getSyncHistory();
+
+
+
+    for(SyncRecord record : records){
+
+
+        historyModel.addRow(
+                new Object[]{
+                        record.getTableName(),
+                        record.getOperation(),
+                        record.getStatus(),
+                        record.getCreatedAt()
+                }
+        );
+
+    }
+
+}
 
 }
