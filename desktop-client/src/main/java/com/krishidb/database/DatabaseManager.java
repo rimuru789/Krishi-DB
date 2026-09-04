@@ -28,7 +28,7 @@ public class DatabaseManager {
         return DriverManager.getConnection(databaseUrl);
     }
 
-    private static Path resolveDatabasePath() {
+    public static Path resolveDatabasePath() {
         Path currentDir = Paths.get("").toAbsolutePath().normalize();
         Path[] candidates = {
             currentDir.resolve("data"),

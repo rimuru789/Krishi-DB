@@ -22,7 +22,7 @@ public class SyncQueueDAO {
     status,
     created_at
     FROM sync_queue
-    ORDER BY created_at DESC
+    ORDER BY id DESC
     LIMIT 10
     """;
 
@@ -73,7 +73,19 @@ public class SyncQueueDAO {
             int recordId,
             String operation
     ){
+        try (Connection connection = DatabaseManager.getConnection()) {
+            addToQueue(connection, tableName, recordId, operation);
+        } catch(SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
+    public void addToQueue(
+            Connection connection,
+            String tableName,
+            int recordId,
+            String operation
+    ) throws SQLException {
         String sql =
         """
         INSERT INTO sync_queue
@@ -81,29 +93,11 @@ public class SyncQueueDAO {
         VALUES (?, ?, ?, 'PENDING', 0)
         """;
 
-
-        try(Connection connection =
-                DatabaseManager.getConnection();
-
-            PreparedStatement statement =
-                connection.prepareStatement(sql)){
-
-
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, tableName);
             statement.setInt(2, recordId);
             statement.setString(3, operation);
-
-
             statement.executeUpdate();
-
-
         }
-        catch(SQLException e){
-
-            e.printStackTrace();
-
-        }
-
     }
-
 }

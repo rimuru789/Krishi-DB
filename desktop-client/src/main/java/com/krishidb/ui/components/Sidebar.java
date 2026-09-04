@@ -1,70 +1,66 @@
 package com.krishidb.ui.components;
 
 import com.krishidb.ui.MainFrame;
+import com.krishidb.util.I18n;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
 
-public class Sidebar extends JPanel {
+public class Sidebar extends JPanel implements I18n.LocaleChangeListener {
 
     private final MainFrame mainFrame;
+    private JLabel logo;
+    private JLabel subtitle;
     private JLabel connectionStatus;
     private JLabel syncStatus;
 
+    private JLabel businessSectionLabel;
+    private JLabel insightsSectionLabel;
+    private JLabel systemSectionLabel;
+
+    private boolean isOnline = false;
+    private int pendingCount = 1;
+
+    private final Map<String, JButton> navButtons = new HashMap<>();
+
     private final Color sidebarColor = new Color(15, 23, 42);
     private final Color buttonColor = new Color(15, 23, 42);
-    private final Color hoverColor = new Color(30, 41, 59);
-    private final Color selectedColor = new Color(22, 101, 52);
     private final Color textColor = new Color(226, 232, 240);
     private final Color mutedTextColor = new Color(148, 163, 184);
 
     public Sidebar(MainFrame mainFrame) {
-
         this.mainFrame = mainFrame;
 
         setPreferredSize(new Dimension(260, 0));
         setBackground(sidebarColor);
-
         setLayout(new BorderLayout());
 
         add(createHeader(), BorderLayout.NORTH);
         add(createNavigation(), BorderLayout.CENTER);
         add(createStatusArea(), BorderLayout.SOUTH);
-    }
 
+        I18n.addListener(this);
+    }
 
     // -------------------------------------------------
     // HEADER
     // -------------------------------------------------
-
     private JPanel createHeader() {
-
         JPanel header = new JPanel();
         header.setOpaque(false);
+        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+        header.setBorder(new EmptyBorder(28, 24, 25, 20));
 
-        header.setLayout(
-                new BoxLayout(header, BoxLayout.Y_AXIS)
-        );
-
-        header.setBorder(
-                new EmptyBorder(28, 24, 25, 20)
-        );
-
-        JLabel logo = new JLabel("KRISHI-DB");
-
+        logo = new JLabel(I18n.get("app.title"));
         logo.setForeground(Color.WHITE);
-        logo.setFont(
-                new Font("SansSerif", Font.BOLD, 24)
-        );
+        logo.setFont(new Font("SansSerif", Font.BOLD, 24));
 
-        JLabel subtitle =
-                new JLabel("Rural Business Ledger");
-
+        subtitle = new JLabel(I18n.get("app.subtitle"));
         subtitle.setForeground(mutedTextColor);
-        subtitle.setFont(
-                new Font("SansSerif", Font.PLAIN, 12)
-        );
+        subtitle.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
         logo.setAlignmentX(Component.LEFT_ALIGNMENT);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -76,313 +72,148 @@ public class Sidebar extends JPanel {
         return header;
     }
 
-
     // -------------------------------------------------
     // NAVIGATION
     // -------------------------------------------------
-
     private JPanel createNavigation() {
-
         JPanel navigation = new JPanel();
-
         navigation.setOpaque(false);
-
-        navigation.setLayout(
-                new BoxLayout(navigation, BoxLayout.Y_AXIS)
-        );
-
-        navigation.setBorder(
-                new EmptyBorder(5, 14, 10, 14)
-        );
-
+        navigation.setLayout(new BoxLayout(navigation, BoxLayout.Y_AXIS));
+        navigation.setBorder(new EmptyBorder(5, 14, 10, 14));
 
         // DASHBOARD
+        navigation.add(createNavBtn("DASHBOARD", "⌂", "nav.dashboard"));
+        navigation.add(Box.createVerticalStrut(20));
 
-        navigation.add(
-                createNavigationButton(
-                        "⌂   Dashboard",
-                        "DASHBOARD"
-                )
-        );
-
-
-        navigation.add(Box.createVerticalStrut(25));
-
-        navigation.add(
-                createSectionLabel("BUSINESS")
-        );
-
+        // BUSINESS SECTION
+        businessSectionLabel = createSectionLabel(I18n.get("nav.business"));
+        navigation.add(businessSectionLabel);
         navigation.add(Box.createVerticalStrut(8));
 
+        navigation.add(createNavBtn("NEW_ENTRY", "＋", "nav.new_entry"));
+        navigation.add(createNavBtn("NEW_SALE", "▣", "nav.new_sale"));
+        navigation.add(createNavBtn("INVENTORY", "□", "nav.inventory"));
+        navigation.add(createNavBtn("CUSTOMERS", "♙", "nav.customers"));
+        navigation.add(createNavBtn("EXPENSES", "₹", "nav.expenses"));
+        navigation.add(createNavBtn("TRANSACTIONS", "≡", "nav.transactions"));
 
-        navigation.add(
-                createNavigationButton(
-                        "＋   New Entry",
-                        "NEW_ENTRY"
-                )
-        );
+        navigation.add(Box.createVerticalStrut(20));
 
-        navigation.add(
-                createNavigationButton(
-                        "▣   New Sale",
-                        "NEW_SALE"
-                )
-        );
-
-        navigation.add(
-                createNavigationButton(
-                        "□   Inventory",
-                        "INVENTORY"
-                )
-        );
-
-        navigation.add(
-                createNavigationButton(
-                        "♙   Customers",
-                        "CUSTOMERS"
-                )
-        );
-
-        navigation.add(
-                createNavigationButton(
-                        "₹   Expenses",
-                        "EXPENSES"
-                )
-        );
-
-        navigation.add(
-                createNavigationButton(
-                        "≡   Transactions",
-                        "TRANSACTIONS"
-                )
-        );
-
-
-        navigation.add(Box.createVerticalStrut(25));
-
-        navigation.add(
-                createSectionLabel("INSIGHTS")
-        );
-
+        // INSIGHTS SECTION
+        insightsSectionLabel = createSectionLabel(I18n.get("nav.insights"));
+        navigation.add(insightsSectionLabel);
         navigation.add(Box.createVerticalStrut(8));
 
+        navigation.add(createNavBtn("REPORTS", "▥", "nav.reports"));
+        navigation.add(createNavBtn("MARKET_PRICES", "↗", "nav.market_prices"));
 
-        navigation.add(
-                createNavigationButton(
-                        "▥   Reports",
-                        "REPORTS"
-                )
-        );
+        navigation.add(Box.createVerticalStrut(20));
 
-        navigation.add(
-                createNavigationButton(
-                        "↗   Market Prices",
-                        "MARKET_PRICES"
-                )
-        );
-
-
-        navigation.add(Box.createVerticalStrut(25));
-
-        navigation.add(
-                createSectionLabel("SYSTEM")
-        );
-
+        // SYSTEM SECTION
+        systemSectionLabel = createSectionLabel(I18n.get("nav.system"));
+        navigation.add(systemSectionLabel);
         navigation.add(Box.createVerticalStrut(8));
 
-
-        navigation.add(
-                createNavigationButton(
-                        "↻   Sync Center",
-                        "SYNC"
-                )
-        );
-
-        navigation.add(
-                createNavigationButton(
-                        "⚙   Settings",
-                        "SETTINGS"
-                )
-        );
-
+        navigation.add(createNavBtn("SYNC", "↻", "nav.sync"));
+        navigation.add(createNavBtn("SETTINGS", "⚙", "nav.settings"));
 
         return navigation;
     }
 
-
-    // -------------------------------------------------
-    // NAVIGATION BUTTON
-    // -------------------------------------------------
-
-    private JButton createNavigationButton(
-            String text,
-            String pageName) {
-
-        JButton button = new JButton(text);
-
-        button.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 44)
-        );
-
-        button.setPreferredSize(
-                new Dimension(220, 44)
-        );
-
-        button.setHorizontalAlignment(
-                SwingConstants.LEFT
-        );
-
+    private JButton createNavBtn(String pageKey, String icon, String i18nKey) {
+        JButton button = new JButton(icon + "   " + I18n.get(i18nKey));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        button.setPreferredSize(new Dimension(220, 44));
+        button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setForeground(textColor);
         button.setBackground(buttonColor);
-
-        button.setFont(
-                new Font("SansSerif", Font.PLAIN, 14)
-        );
-
-        button.setBorder(
-                new EmptyBorder(0, 14, 0, 10)
-        );
-
+        button.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        button.setBorder(new EmptyBorder(0, 14, 0, 10));
         button.setFocusPainted(false);
-        button.setCursor(
-                Cursor.getPredefinedCursor(
-                        Cursor.HAND_CURSOR
-                )
-        );
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        button.addActionListener(
-                e -> mainFrame.showPage(pageName)
-        );
+        button.putClientProperty("icon", icon);
+        button.putClientProperty("i18nKey", i18nKey);
+        button.putClientProperty("pageKey", pageKey);
 
+        button.addActionListener(e -> mainFrame.showPage(pageKey));
+
+        navButtons.put(pageKey, button);
         return button;
     }
 
-
-    // -------------------------------------------------
-    // SECTION LABEL
-    // -------------------------------------------------
-
     private JLabel createSectionLabel(String text) {
-
         JLabel label = new JLabel(text);
-
         label.setForeground(mutedTextColor);
-
-        label.setFont(
-                new Font("SansSerif", Font.BOLD, 11)
-        );
-
-        label.setBorder(
-                new EmptyBorder(0, 12, 0, 0)
-        );
-
+        label.setFont(new Font("SansSerif", Font.BOLD, 11));
+        label.setBorder(new EmptyBorder(0, 12, 0, 0));
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         return label;
     }
 
-
     // -------------------------------------------------
-    // CONNECTION / SYNC STATUS
+    // STATUS AREA
     // -------------------------------------------------
-
     private JPanel createStatusArea() {
-
         JPanel container = new JPanel();
-
         container.setOpaque(false);
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBorder(new EmptyBorder(15, 22, 25, 22));
 
-        container.setLayout(
-                new BoxLayout(container, BoxLayout.Y_AXIS)
-        );
+        connectionStatus = new JLabel("●  " + I18n.get("status.offline"));
+        connectionStatus.setForeground(new Color(251, 191, 36));
+        connectionStatus.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        container.setBorder(
-                new EmptyBorder(15, 22, 25, 22)
-        );
-
-
-         connectionStatus =
-                new JLabel("●  OFFLINE");
-
-        connectionStatus.setForeground(
-                new Color(251, 191, 36)
-        );
-
-        connectionStatus.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.BOLD,
-                        12
-                )
-        );
-
-
-                syncStatus =
-                new JLabel("1 change saved locally");
-
+        syncStatus = new JLabel(I18n.get("status.saved_locally", pendingCount));
         syncStatus.setForeground(mutedTextColor);
+        syncStatus.setFont(new Font("SansSerif", Font.PLAIN, 11));
 
-        syncStatus.setFont(
-                new Font(
-                        "SansSerif",
-                        Font.PLAIN,
-                        11
-                )
-        );
-
-
-        connectionStatus.setAlignmentX(
-                Component.LEFT_ALIGNMENT
-        );
-
-        syncStatus.setAlignmentX(
-                Component.LEFT_ALIGNMENT
-        );
-
+        connectionStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
+        syncStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         container.add(connectionStatus);
-
-        container.add(
-                Box.createVerticalStrut(5)
-        );
-
+        container.add(Box.createVerticalStrut(5));
         container.add(syncStatus);
 
         return container;
     }
 
-    public void updateSyncStatus(boolean online, int pending)
-{
-
-    if(online)
-    {
-        connectionStatus.setText("● ONLINE");
-
-        connectionStatus.setForeground(
-                new Color(34,197,94)
-        );
-
-        syncStatus.setText(
-                pending + " pending changes"
-        );
-
-    }
-    else
-    {
-        connectionStatus.setText("● OFFLINE");
-
-        connectionStatus.setForeground(
-                new Color(251,191,36)
-        );
-
-
-        syncStatus.setText(
-                pending + " changes saved locally"
-        );
+    public void updateSyncStatus(boolean online, int pending) {
+        this.isOnline = online;
+        this.pendingCount = pending;
+        renderStatus();
     }
 
+    private void renderStatus() {
+        if (isOnline) {
+            connectionStatus.setText("●  " + I18n.get("status.online"));
+            connectionStatus.setForeground(new Color(34, 197, 94));
+            syncStatus.setText(I18n.get("status.pending_changes", pendingCount));
+        } else {
+            connectionStatus.setText("●  " + I18n.get("status.offline"));
+            connectionStatus.setForeground(new Color(251, 191, 36));
+            syncStatus.setText(I18n.get("status.saved_locally", pendingCount));
+        }
+        repaint();
+    }
 
-    repaint();
-}
+    @Override
+    public void onLocaleChange() {
+        logo.setText(I18n.get("app.title"));
+        subtitle.setText(I18n.get("app.subtitle"));
 
+        businessSectionLabel.setText(I18n.get("nav.business"));
+        insightsSectionLabel.setText(I18n.get("nav.insights"));
+        systemSectionLabel.setText(I18n.get("nav.system"));
+
+        for (JButton btn : navButtons.values()) {
+            String icon = (String) btn.getClientProperty("icon");
+            String key = (String) btn.getClientProperty("i18nKey");
+            if (icon != null && key != null) {
+                btn.setText(icon + "   " + I18n.get(key));
+            }
+        }
+
+        renderStatus();
+    }
 }

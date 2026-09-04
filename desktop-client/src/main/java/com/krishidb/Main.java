@@ -16,25 +16,20 @@ public class Main {
         
         DatabaseInitializer.initialize();
 
-      
+        // Load saved language preference before creating UI
+        com.krishidb.dao.SettingsDAO settingsDAO = new com.krishidb.dao.SettingsDAO();
+        String savedLanguage = settingsDAO.getSetting("app_language", "en");
+        com.krishidb.util.I18n.setLanguage(savedLanguage);
+
         FlatLightLaf.setup();
 
-        
         SwingUtilities.invokeLater(() -> {
-
             MainFrame mainFrame = new MainFrame();
-
             mainFrame.setVisible(true);
         });
 
         ProductDAO dao = new ProductDAO();
-
-System.out.println(
-    "Pending products: "
-    + dao.getPendingCount()
-);
-
-
+        System.out.println("Pending products: " + dao.getPendingCount());
     }
 
 

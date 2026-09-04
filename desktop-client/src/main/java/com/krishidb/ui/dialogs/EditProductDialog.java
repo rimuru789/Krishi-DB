@@ -1,15 +1,13 @@
 package com.krishidb.ui.dialogs;
 
-
 import javax.swing.*;
 import java.awt.*;
 
 import com.krishidb.dao.ProductDAO;
 import com.krishidb.model.Product;
-
+import com.krishidb.util.I18n;
 
 public class EditProductDialog extends JDialog {
-
 
     private JTextField nameField;
     private JTextField categoryField;
@@ -18,304 +16,113 @@ public class EditProductDialog extends JDialog {
     private JTextField stockField;
     private JTextField lowStockField;
 
-
-    private Product product;
-
+    private final Product product;
 
     public EditProductDialog(JFrame parent, Product product) {
+        super(parent, I18n.get("product.dialog.edit_title"), true);
+        this.product = product;
 
-    super(parent, "Edit Product", true);
+        setSize(550, 520);
+        setLocationRelativeTo(parent);
+        setLayout(new BorderLayout(20, 20));
 
-    this.product = product;
+        // ---------------- FORM ----------------
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBorder(BorderFactory.createEmptyBorder(30, 40, 20, 40));
 
+        nameField = new JTextField(product.getName());
+        categoryField = new JTextField(product.getCategory());
+        unitField = new JTextField(product.getUnit());
+        priceField = new JTextField(String.valueOf(product.getSellingPrice()));
+        stockField = new JTextField(String.valueOf(product.getStockQuantity()));
+        lowStockField = new JTextField(String.valueOf(product.getLowStockLevel()));
 
-    setSize(550,520);
+        addField(form, I18n.get("product.dialog.name"), nameField, 0);
+        addField(form, I18n.get("product.dialog.category"), categoryField, 1);
+        addField(form, I18n.get("product.dialog.unit"), unitField, 2);
+        addField(form, I18n.get("product.dialog.selling_price"), priceField, 3);
+        addField(form, I18n.get("product.dialog.stock_quantity"), stockField, 4);
+        addField(form, I18n.get("product.dialog.low_stock_level"), lowStockField, 5);
 
-    setLocationRelativeTo(parent);
+        add(form, BorderLayout.CENTER);
 
-    setLayout(new BorderLayout(20,20));
+        // ---------------- BUTTONS ----------------
+        JButton cancelButton = new JButton(I18n.get("product.btn.cancel"));
+        JButton saveButton = new JButton(I18n.get("product.btn.save_changes"));
 
+        cancelButton.putClientProperty("JButton.buttonType", "square");
+        saveButton.putClientProperty("JButton.buttonType", "square");
 
+        cancelButton.setPreferredSize(new Dimension(100, 40));
+        saveButton.setPreferredSize(new Dimension(160, 40));
 
-    // ---------------- FORM ----------------
+        cancelButton.addActionListener(e -> dispose());
+        saveButton.addActionListener(e -> saveProduct());
 
-    JPanel form = new JPanel(
-            new GridBagLayout()
-    );
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
 
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(saveButton);
 
-    form.setBorder(
-            BorderFactory.createEmptyBorder(
-                    30,40,20,40
-            )
-    );
+        add(buttonPanel, BorderLayout.SOUTH);
 
-
-    nameField =
-            new JTextField(product.getName());
-
-
-    categoryField =
-            new JTextField(product.getCategory());
-
-
-    unitField =
-            new JTextField(product.getUnit());
-
-
-    priceField =
-            new JTextField(
-                    String.valueOf(
-                            product.getSellingPrice()
-                    )
-            );
-
-
-    stockField =
-            new JTextField(
-                    String.valueOf(
-                            product.getStockQuantity()
-                    )
-            );
-
-
-    lowStockField =
-            new JTextField(
-                    String.valueOf(
-                            product.getLowStockLevel()
-                    )
-            );
-
-
-
-    addField(form,"Product Name",nameField,0);
-
-    addField(form,"Category",categoryField,1);
-
-    addField(form,"Unit",unitField,2);
-
-    addField(form,"Selling Price",priceField,3);
-
-    addField(form,"Stock Quantity",stockField,4);
-
-    addField(form,"Low Stock Level",lowStockField,5);
-
-
-
-    add(
-            form,
-            BorderLayout.CENTER
-    );
-
-
-
-    // ---------------- BUTTONS ----------------
-
-
-    JButton cancelButton =
-            new JButton("Cancel");
-
-
-    JButton saveButton =
-            new JButton("Save Changes");
-
-
-
-    // FlatLaf rectangular buttons
-
-    cancelButton.putClientProperty(
-            "JButton.buttonType",
-            "square"
-    );
-
-
-    saveButton.putClientProperty(
-            "JButton.buttonType",
-            "square"
-    );
-
-
-
-    cancelButton.setPreferredSize(
-            new Dimension(100,40)
-    );
-
-
-    saveButton.setPreferredSize(
-            new Dimension(140,40)
-    );
-
-
-
-    cancelButton.addActionListener(
-            e -> dispose()
-    );
-
-
-    saveButton.addActionListener(
-            e -> saveProduct()
-    );
-
-
-
-    JPanel buttonPanel =
-        new JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        15,
-                        10
-                )
-        );
-
-
-buttonPanel.setBorder(
-        BorderFactory.createEmptyBorder(
-                0,
-                20,
-                10,
-                20
-        )
-);
-
-
-    buttonPanel.add(cancelButton);
-
-    buttonPanel.add(saveButton);
-
-
-
-    add(
-            buttonPanel,
-            BorderLayout.SOUTH
-    );
-
-
-
-    setVisible(true);
-}
-
-    private void addField(
-        JPanel panel,
-        String label,
-        JTextField field,
-        int row
-){
-
-    GridBagConstraints gbc = new GridBagConstraints();
-
-    gbc.insets = new Insets(
-            10,10,10,10
-    );
-
-    gbc.gridy = row;
-
-
-    gbc.gridx = 0;
-
-    gbc.anchor = GridBagConstraints.WEST;
-
-    panel.add(
-            new JLabel(label),
-            gbc
-    );
-
-
-    gbc.gridx = 1;
-
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-
-    gbc.weightx = 1;
-
-
-    field.setPreferredSize(
-            new Dimension(250,40)
-    );
-
-
-    panel.add(
-            field,
-            gbc
-    );
-}
-
-
-
-    private void saveProduct(){
-
-    try {
-
-        product.setName(
-                nameField.getText()
-        );
-
-
-        product.setCategory(
-                categoryField.getText()
-        );
-
-
-        product.setUnit(
-                unitField.getText()
-        );
-
-
-        product.setSellingPrice(
-                Double.parseDouble(
-                        priceField.getText()
-                )
-        );
-
-
-        product.setStockQuantity(
-                Double.parseDouble(
-                        stockField.getText()
-                )
-        );
-
-
-        product.setLowStockLevel(
-                Double.parseDouble(
-                        lowStockField.getText()
-                )
-        );
-
-
-        ProductDAO dao = new ProductDAO();
-
-
-        boolean updated =
-                dao.updateProduct(product);
-
-
-
-        if(updated){
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Product updated successfully"
-            );
-
-            dispose();
-
-        }
-        else{
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Update failed"
-            );
-        }
-
-
-    } catch(NumberFormatException e){
-
-        JOptionPane.showMessageDialog(
-                this,
-                "Please enter valid numbers"
-        );
-
+        setVisible(true);
     }
 
-}
+    private void addField(JPanel panel, String label, JTextField field, int row) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.gridy = row;
+        gbc.gridx = 0;
+        gbc.anchor = GridBagConstraints.WEST;
 
+        panel.add(new JLabel(label), gbc);
+
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1;
+
+        field.setPreferredSize(new Dimension(250, 40));
+        panel.add(field, gbc);
+    }
+
+    private void saveProduct() {
+        try {
+            if (nameField.getText().isBlank()
+                    || categoryField.getText().isBlank()
+                    || unitField.getText().isBlank()) {
+                JOptionPane.showMessageDialog(this, I18n.get("product.msg.fill_all"));
+                return;
+            }
+
+            double price = Double.parseDouble(priceField.getText().trim());
+            double stock = Double.parseDouble(stockField.getText().trim());
+            double lowStock = Double.parseDouble(lowStockField.getText().trim());
+
+            if (price < 0 || stock < 0 || lowStock < 0) {
+                JOptionPane.showMessageDialog(this, I18n.get("product.msg.non_negative"));
+                return;
+            }
+
+            product.setName(nameField.getText().trim());
+            product.setCategory(categoryField.getText().trim());
+            product.setUnit(unitField.getText().trim());
+            product.setSellingPrice(price);
+            product.setStockQuantity(stock);
+            product.setLowStockLevel(lowStock);
+
+            ProductDAO dao = new ProductDAO();
+            boolean updated = dao.updateProduct(product);
+
+            if (updated) {
+                JOptionPane.showMessageDialog(this, I18n.get("product.msg.update_success"));
+                dispose();
+            } else {
+                JOptionPane.showMessageDialog(this, I18n.get("product.msg.update_failed"));
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, I18n.get("product.msg.valid_numbers"));
+        }
+    }
 }
