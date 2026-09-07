@@ -28,6 +28,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         Map<String, Object> body = new HashMap<>();
