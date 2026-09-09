@@ -16,12 +16,17 @@ public class DashboardDAO {
     public static class DashboardMetrics {
         public double todaySales;
         public int todayInvoices;
+        public double todayPurchases;
+        public int todayPurchasesCount;
+        public double todayExpenses;
+        public int todayExpensesCount;
         public double totalSales;
         public double totalPurchases;
         public double totalExpenses;
         public double netProfit;
         public double inventoryValuation;
         public int productCount;
+        public int inStockCount;
         public int lowStockCount;
         public double customerOutstanding;
         public double supplierOutstanding;
@@ -49,6 +54,36 @@ public class DashboardDAO {
                 if (rs.next()) {
                     m.todaySales = Math.round(rs.getDouble(1) * 100.0) / 100.0;
                     m.todayInvoices = rs.getInt(2);
+                }
+            }
+
+            // 1b. Today's purchases & count
+            String todayPurchasesSql = """
+                SELECT COALESCE(SUM(total_amount), 0.0), COUNT(*)
+                FROM purchases
+                WHERE date(purchase_date, 'localtime') = date('now', 'localtime')
+                   OR date(purchase_date) = date('now')
+                """;
+            try (PreparedStatement ps = conn.prepareStatement(todayPurchasesSql);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    m.todayPurchases = Math.round(rs.getDouble(1) * 100.0) / 100.0;
+                    m.todayPurchasesCount = rs.getInt(2);
+                }
+            }
+
+            // 1c. Today's expenses & count
+            String todayExpensesSql = """
+                SELECT COALESCE(SUM(amount), 0.0), COUNT(*)
+                FROM expenses
+                WHERE date(expense_date, 'localtime') = date('now', 'localtime')
+                   OR date(expense_date) = date('now')
+                """;
+            try (PreparedStatement ps = conn.prepareStatement(todayExpensesSql);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    m.todayExpenses = Math.round(rs.getDouble(1) * 100.0) / 100.0;
+                    m.todayExpensesCount = rs.getInt(2);
                 }
             }
 
@@ -86,7 +121,8 @@ public class DashboardDAO {
             String invSql = """
                 SELECT COALESCE(SUM(stock_quantity * selling_price), 0.0),
                        COUNT(*),
-                       COALESCE(SUM(CASE WHEN stock_quantity <= low_stock_level THEN 1 ELSE 0 END), 0)
+                       COALESCE(SUM(CASE WHEN stock_quantity <= low_stock_level THEN 1 ELSE 0 END), 0),
+                       COALESCE(SUM(CASE WHEN stock_quantity > 0 THEN 1 ELSE 0 END), 0)
                 FROM products
                 """;
             try (PreparedStatement ps = conn.prepareStatement(invSql);
@@ -95,6 +131,7 @@ public class DashboardDAO {
                     m.inventoryValuation = Math.round(rs.getDouble(1) * 100.0) / 100.0;
                     m.productCount = rs.getInt(2);
                     m.lowStockCount = rs.getInt(3);
+                    m.inStockCount = rs.getInt(4);
                 }
             }
 

@@ -79,124 +79,147 @@ public class SyncDAO {
 
     }
 
-    public boolean syncProductsToServer(){
+    public static class SyncResult {
+        private final int totalAttempted;
+        private final int successCount;
+        private final int failureCount;
+        private final boolean serverUnavailable;
+        private final String message;
 
-    try{
+        public SyncResult(int totalAttempted, int successCount, int failureCount, boolean serverUnavailable, String message) {
+            this.totalAttempted = totalAttempted;
+            this.successCount = successCount;
+            this.failureCount = failureCount;
+            this.serverUnavailable = serverUnavailable;
+            this.message = message;
+        }
 
+        public int getTotalAttempted() { return totalAttempted; }
+        public int getSuccessCount() { return successCount; }
+        public int getFailureCount() { return failureCount; }
+        public boolean isServerUnavailable() { return serverUnavailable; }
+        public String getMessage() { return message; }
+
+        public boolean isAllSuccess() {
+            return !serverUnavailable && totalAttempted > 0 && failureCount == 0;
+        }
+
+        public boolean isPartialSuccess() {
+            return !serverUnavailable && successCount > 0 && failureCount > 0;
+        }
+    }
+
+    public boolean syncProductsToServer() {
+        SyncResult res = syncProductsWithResult();
+        return res.isAllSuccess() || (res.getTotalAttempted() == 0 && !res.isServerUnavailable());
+    }
+
+    public SyncResult syncProductsWithResult() {
         List<Product> products = getPendingProducts();
 
-        if(products.isEmpty()){
-            return true;
+        if (products.isEmpty()) {
+            return new SyncResult(0, 0, 0, false, "No pending products to sync");
         }
 
+        SettingsDAO settingsDAO = new SettingsDAO();
+        String baseUrl = settingsDAO.getSetting("server_url", "http://localhost:8080").trim();
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        String targetUrl = baseUrl + "/api/products";
 
         ObjectMapper mapper = new ObjectMapper();
+        HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(5))
+                .build();
 
+        int successCount = 0;
+        int failureCount = 0;
+        boolean serverUnavailable = false;
 
-        HttpClient client =
-                HttpClient.newHttpClient();
+        for (Product product : products) {
+            System.out.println(
+                "Sending product ID: "
+                + product.getId()
+                + " Name: "
+                + product.getName()
+            );
 
+            Product syncProduct = new Product(
+                    product.getName(),
+                    product.getCategory(),
+                    product.getUnit(),
+                    product.getSellingPrice(),
+                    product.getStockQuantity(),
+                    product.getLowStockLevel()
+            );
 
+            try {
+                String json = mapper.writeValueAsString(syncProduct);
 
-        
-            for(Product product : products){
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(targetUrl))
+                        .header("Content-Type", "application/json")
+                        .timeout(java.time.Duration.ofSeconds(10))
+                        .POST(HttpRequest.BodyPublishers.ofString(json))
+                        .build();
 
-    System.out.println(
-        "Sending product ID: "
-        + product.getId()
-        + " Name: "
-        + product.getName()
-    );
-
-
-
-    
-
-Product syncProduct = new Product(
-        product.getName(),
-        product.getCategory(),
-        product.getUnit(),
-        product.getSellingPrice(),
-        product.getStockQuantity(),
-        product.getLowStockLevel()
-);
-
-
-String json =
-        mapper.writeValueAsString(syncProduct);
-
-
-
-            HttpRequest request =
-                    HttpRequest.newBuilder()
-                    .uri(
-                        URI.create(
-                        "http://localhost:8080/api/products"
-                        )
-                    )
-                    .header(
-                        "Content-Type",
-                        "application/json"
-                    )
-                    .POST(
-                        HttpRequest.BodyPublishers.ofString(json)
-                    )
-                    .build();
-
-
-
-            HttpResponse<String> response =
-                    client.send(
+                HttpResponse<String> response = client.send(
                         request,
                         HttpResponse.BodyHandlers.ofString()
+                );
+
+                int statusCode = response.statusCode();
+
+                // Treat complete 2xx range (200 through 299) as successful
+                if (statusCode >= 200 && statusCode < 300) {
+                    boolean updated = markAsSynced(product.getId());
+                    boolean queueUpdated = markQueueCompleted(product.getId());
+                    successCount++;
+
+                    System.out.println(
+                        "Successfully synced product: "
+                        + product.getName()
+                        + " Status: "
+                        + statusCode
                     );
+                } else {
+                    failureCount++;
+                    recordQueueFailure(product.getId());
 
-
-
-            if(response.statusCode()==200){
-
-    boolean updated =
-            markAsSynced(product.getId());
-
-
-    boolean queueUpdated =
-            markQueueCompleted(product.getId());
-
-
-    System.out.println(
-        "Product sync = "
-        + updated
-        + " Queue update = "
-        + queueUpdated
-    );
-
-}
-else{
-
-    System.out.println(
-            "Failed syncing product: "
-            + product.getName()
-            + " Status: "
-            + response.statusCode()
-    );
-
-}
-
+                    System.out.println(
+                        "Failed syncing product: "
+                        + product.getName()
+                        + " Status: "
+                        + statusCode
+                    );
+                }
+            } catch (java.net.ConnectException | java.net.http.HttpConnectTimeoutException e) {
+                serverUnavailable = true;
+                failureCount++;
+                recordQueueFailure(product.getId());
+                System.err.println(
+                    "Failed syncing product: "
+                    + product.getName()
+                    + " Server unavailable: "
+                    + e.getMessage()
+                );
+                break; // Server is unreachable, stop attempting remaining items in this batch
+            } catch (Exception e) {
+                failureCount++;
+                recordQueueFailure(product.getId());
+                System.err.println(
+                    "Failed syncing product: "
+                    + product.getName()
+                    + " Error: "
+                    + e.getMessage()
+                );
+            }
         }
 
-
-        return true;
-
-
+        String summary = "Sync finished: " + successCount + " succeeded, " + failureCount + " failed.";
+        return new SyncResult(products.size(), successCount, failureCount, serverUnavailable, summary);
     }
-    catch(Exception e){
-
-        e.printStackTrace();
-        return false;
-
-    }
-
-}
 
 public ResultSet getPendingQueue(){
 
@@ -322,42 +345,37 @@ public List<Integer> getPendingQueueIds(){
 
 }
 
-public boolean markQueueCompleted(int productId){
+    public boolean markQueueCompleted(int productId) {
+        String sql = """
+                UPDATE sync_queue
+                SET status = 'COMPLETED', last_attempt_at = CURRENT_TIMESTAMP
+                WHERE table_name = 'products' AND record_id = ?
+                """;
 
-
-    String sql =
-            """
-            UPDATE sync_queue
-            SET status='COMPLETED'
-            WHERE record_id=?
-            """;
-
-
-    try(
-        Connection connection =
-                DatabaseManager.getConnection();
-
-        PreparedStatement statement =
-                connection.prepareStatement(sql)
-    ){
-
-
-        statement.setInt(1, productId);
-
-
-        return statement.executeUpdate()>0;
-
-
-    }
-    catch(SQLException e){
-
-        e.printStackTrace();
-
+        try (Connection connection = DatabaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, productId);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
+    public boolean recordQueueFailure(int productId) {
+        String sql = """
+                UPDATE sync_queue
+                SET attempts = attempts + 1, last_attempt_at = CURRENT_TIMESTAMP
+                WHERE table_name = 'products' AND record_id = ?
+                """;
 
-    return false;
-
-}
-
+        try (Connection connection = DatabaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, productId);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
