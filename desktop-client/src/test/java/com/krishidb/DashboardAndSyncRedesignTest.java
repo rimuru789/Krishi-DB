@@ -99,7 +99,27 @@ public class DashboardAndSyncRedesignTest {
                 "sync.protect.point3_title", "sync.protect.point4_title",
                 "sync.history.title", "sync.history.subtitle", "sync.history.empty_title",
                 "sync.col.table", "sync.col.operation", "sync.col.status", "sync.col.time",
-                "sync.msg.server_unavailable", "sync.msg.partial", "sync.msg.no_pending"
+                "sync.msg.server_unavailable", "sync.msg.partial", "sync.msg.no_pending",
+
+                // Settings keys
+                "settings.title", "settings.subtitle", "settings.badge.offline_first", "settings.badge.offline_desc",
+                "settings.section.language", "settings.section.language_desc", "settings.label.language",
+                "settings.label.language_helper", "settings.label.language_note",
+                "settings.section.business", "settings.section.business_desc", "settings.badge.identity",
+                "settings.label.business_name", "settings.label.business_name_helper",
+                "settings.label.owner_name", "settings.label.owner_name_helper",
+                "settings.label.phone", "settings.label.phone_helper",
+                "settings.label.village", "settings.label.village_helper",
+                "settings.section.server", "settings.section.server_desc",
+                "settings.label.server_url", "settings.label.server_url_helper",
+                "settings.server.mode_title", "settings.server.mode_desc",
+                "settings.section.backup", "settings.section.backup_desc",
+                "settings.backup.title", "settings.backup.desc", "settings.backup.note",
+                "settings.btn.backup", "settings.btn.save", "settings.save_helper", "settings.save_indicator",
+                "settings.section.about", "settings.section.about_desc",
+                "settings.about.version", "settings.about.desc", "settings.about.mode",
+                "settings.about.feature1", "settings.about.feature2", "settings.about.feature3",
+                "settings.msg.saved"
         };
 
         for (String lang : languages) {
@@ -156,6 +176,35 @@ public class DashboardAndSyncRedesignTest {
             SyncPanel syncPanel = new SyncPanel(null);
             assertNotNull(syncPanel);
             syncPanel.onLocaleChange();
+
+            com.krishidb.ui.pages.SettingsPanel settingsPanel = new com.krishidb.ui.pages.SettingsPanel(null);
+            assertNotNull(settingsPanel);
+            settingsPanel.onLocaleChange();
+        });
+    }
+
+    @Test
+    public void testSettingsPanelResponsiveness() {
+        assertDoesNotThrow(() -> {
+            com.krishidb.ui.pages.SettingsPanel settingsPanel = new com.krishidb.ui.pages.SettingsPanel(null);
+
+            // Test target window resolutions minus 240px sidebar
+            int[][] resolutions = {
+                    {1280 - 240, 720},
+                    {1366 - 240, 768},
+                    {1536 - 240, 864},
+                    {1920 - 240, 1080},
+                    {800, 600} // Narrow window check
+            };
+
+            for (int[] res : resolutions) {
+                int width = res[0];
+                int height = res[1];
+                settingsPanel.setSize(width, height);
+                settingsPanel.doLayout();
+                // Ensure no exceptions during layout at each resolution
+                assertNotNull(settingsPanel.getLayout());
+            }
         });
     }
 }
