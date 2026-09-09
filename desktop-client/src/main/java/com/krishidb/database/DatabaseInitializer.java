@@ -107,7 +107,9 @@ public class DatabaseInitializer {
                 CREATE TABLE IF NOT EXISTS purchases (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     supplier_id INTEGER,
+                    invoice_number TEXT,
                     total_amount REAL NOT NULL,
+                    payment_method TEXT DEFAULT 'CASH',
                     purchase_date TEXT DEFAULT CURRENT_TIMESTAMP,
                     notes TEXT,
                     sync_status TEXT DEFAULT 'PENDING',
@@ -142,6 +144,7 @@ public class DatabaseInitializer {
                     category TEXT NOT NULL,
                     description TEXT,
                     amount REAL NOT NULL,
+                    payment_method TEXT DEFAULT 'CASH',
                     expense_date TEXT DEFAULT CURRENT_TIMESTAMP,
                     sync_status TEXT DEFAULT 'PENDING'
                 )
@@ -155,6 +158,7 @@ public class DatabaseInitializer {
                     reference_id INTEGER,
                     amount REAL NOT NULL,
                     payment_method TEXT,
+                    description TEXT,
                     transaction_date TEXT DEFAULT CURRENT_TIMESTAMP,
                     sync_status TEXT DEFAULT 'PENDING'
                 )
@@ -195,12 +199,62 @@ public class DatabaseInitializer {
                 )
             """);
 
+            // ---------------- SAFE NON-DESTRUCTIVE COLUMN MIGRATIONS ----------------
+            addColumnIfNotExists(statement, "purchases", "invoice_number", "TEXT");
+            addColumnIfNotExists(statement, "purchases", "payment_method", "TEXT DEFAULT 'CASH'");
+            addColumnIfNotExists(statement, "expenses", "payment_method", "TEXT DEFAULT 'CASH'");
+            addColumnIfNotExists(statement, "transactions", "description", "TEXT");
+            addColumnIfNotExists(statement, "customers", "outstanding_balance", "REAL DEFAULT 0.0");
+            addColumnIfNotExists(statement, "suppliers", "outstanding_balance", "REAL DEFAULT 0.0");
+
+            // ---------------- SEED OFFLINE MARKET PRICES IF EMPTY ----------------
+            seedMarketPricesIfEmpty(statement);
+
             System.out.println("Krishi-DB database initialized successfully.");
 
         } catch (SQLException e) {
 
             System.out.println("Database initialization failed.");
             e.printStackTrace();
+        }
+    }
+
+    private static void addColumnIfNotExists(Statement statement, String tableName, String columnName, String columnDefinition) {
+        try {
+            statement.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
+        } catch (SQLException e) {
+            // Column already exists in SQLite - safe to ignore
+        }
+    }
+
+    private static void seedMarketPricesIfEmpty(Statement statement) {
+        try (var rs = statement.executeQuery("SELECT COUNT(*) FROM market_prices")) {
+            if (rs.next() && rs.getInt(1) == 0) {
+                String[][] seedData = {
+                    {"Onion (कांदा)", "Lasalgaon APMC", "Nashik", "2250.0", "Quintal"},
+                    {"Soybean (सोयाबीन)", "Latur APMC", "Latur", "4380.0", "Quintal"},
+                    {"Cotton (कापूस)", "Nagpur APMC", "Nagpur", "7150.0", "Quintal"},
+                    {"Wheat (गहू)", "Pune APMC", "Pune", "2650.0", "Quintal"},
+                    {"Sugarcane (ऊस)", "Kolhapur APMC", "Kolhapur", "3150.0", "Tonne"},
+                    {"Tomato (टोमॅटो)", "Narayangaon APMC", "Pune", "1850.0", "Quintal"},
+                    {"Rice (तांदूळ)", "Kolhapur APMC", "Kolhapur", "3450.0", "Quintal"},
+                    {"Gram / Chana (हरभरा)", "Akola APMC", "Akola", "5850.0", "Quintal"},
+                    {"Maize (मका)", "Baramati APMC", "Pune", "2080.0", "Quintal"},
+                    {"Tur / Arhar (तूर)", "Latur APMC", "Latur", "9900.0", "Quintal"},
+                    {"Potato (बटाटा)", "Pune APMC", "Pune", "1650.0", "Quintal"},
+                    {"Pomegranate (डाळिंब)", "Solapur APMC", "Solapur", "8500.0", "Quintal"}
+                };
+
+                for (String[] row : seedData) {
+                    statement.execute(String.format(
+                        "INSERT INTO market_prices (commodity, market, district, price, unit) VALUES ('%s', '%s', '%s', %s, '%s')",
+                        row[0], row[1], row[2], row[3], row[4]
+                    ));
+                }
+                System.out.println("Seeded offline reference market prices (" + seedData.length + " entries).");
+            }
+        } catch (SQLException e) {
+            System.err.println("Notice: Could not seed market prices: " + e.getMessage());
         }
     }
 }

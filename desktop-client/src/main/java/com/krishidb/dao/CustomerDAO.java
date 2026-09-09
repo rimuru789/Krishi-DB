@@ -12,8 +12,8 @@ public class CustomerDAO {
     // ---------------- ADD CUSTOMER ----------------
     public boolean addCustomer(Customer customer) {
         String sql = """
-            INSERT INTO customers (name, phone, village, sync_status)
-            VALUES (?, ?, ?, 'PENDING')
+            INSERT INTO customers (name, phone, village, outstanding_balance, sync_status)
+            VALUES (?, ?, ?, ?, 'PENDING')
             """;
 
         try (Connection connection = DatabaseManager.getConnection();
@@ -22,6 +22,7 @@ public class CustomerDAO {
             statement.setString(1, customer.getName());
             statement.setString(2, customer.getPhone());
             statement.setString(3, customer.getVillage());
+            statement.setDouble(4, customer.getOutstandingBalance());
 
             int rowsAffected = statement.executeUpdate();
 
@@ -50,7 +51,7 @@ public class CustomerDAO {
     public List<Customer> getAllCustomers() {
         List<Customer> customers = new ArrayList<>();
         String sql = """
-            SELECT id, name, phone, village, created_at, updated_at, sync_status
+            SELECT id, name, phone, village, created_at, updated_at, sync_status, outstanding_balance
             FROM customers
             ORDER BY name COLLATE NOCASE ASC
             """;
@@ -72,7 +73,7 @@ public class CustomerDAO {
     // ---------------- GET CUSTOMER BY ID ----------------
     public Customer getCustomerById(int id) {
         String sql = """
-            SELECT id, name, phone, village, created_at, updated_at, sync_status
+            SELECT id, name, phone, village, created_at, updated_at, sync_status, outstanding_balance
             FROM customers
             WHERE id = ?
             """;
@@ -97,7 +98,7 @@ public class CustomerDAO {
     public boolean updateCustomer(Customer customer) {
         String sql = """
             UPDATE customers
-            SET name = ?, phone = ?, village = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'PENDING'
+            SET name = ?, phone = ?, village = ?, outstanding_balance = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'PENDING'
             WHERE id = ?
             """;
 
@@ -107,7 +108,8 @@ public class CustomerDAO {
             statement.setString(1, customer.getName());
             statement.setString(2, customer.getPhone());
             statement.setString(3, customer.getVillage());
-            statement.setInt(4, customer.getId());
+            statement.setDouble(4, customer.getOutstandingBalance());
+            statement.setInt(5, customer.getId());
 
             int rows = statement.executeUpdate();
             if (rows > 0) {
@@ -172,7 +174,7 @@ public class CustomerDAO {
 
         String pattern = "%" + query.trim() + "%";
         String sql = """
-            SELECT id, name, phone, village, created_at, updated_at, sync_status
+            SELECT id, name, phone, village, created_at, updated_at, sync_status, outstanding_balance
             FROM customers
             WHERE name LIKE ? OR phone LIKE ? OR village LIKE ?
             ORDER BY name COLLATE NOCASE ASC
@@ -230,7 +232,28 @@ public class CustomerDAO {
         return 0;
     }
 
+    public double getTotalOutstandingBalance() {
+        String sql = "SELECT COALESCE(SUM(outstanding_balance), 0.0) FROM customers";
+
+        try (Connection connection = DatabaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error calculating customer outstanding balance: " + e.getMessage());
+        }
+        return 0.0;
+    }
+
     private Customer mapResultSetToCustomer(ResultSet rs) throws SQLException {
+        double balance = 0.0;
+        try {
+            balance = rs.getDouble("outstanding_balance");
+        } catch (SQLException ignored) {
+        }
         return new Customer(
                 rs.getInt("id"),
                 rs.getString("name"),
@@ -238,7 +261,8 @@ public class CustomerDAO {
                 rs.getString("village"),
                 rs.getString("created_at"),
                 rs.getString("updated_at"),
-                rs.getString("sync_status")
+                rs.getString("sync_status"),
+                balance
         );
     }
 }

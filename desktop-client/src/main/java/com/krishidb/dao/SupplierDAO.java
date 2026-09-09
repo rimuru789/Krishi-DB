@@ -12,8 +12,8 @@ public class SupplierDAO {
     // ---------------- ADD SUPPLIER ----------------
     public boolean addSupplier(Supplier supplier) {
         String sql = """
-            INSERT INTO suppliers (name, phone, village, sync_status)
-            VALUES (?, ?, ?, 'PENDING')
+            INSERT INTO suppliers (name, phone, village, outstanding_balance, sync_status)
+            VALUES (?, ?, ?, ?, 'PENDING')
             """;
 
         try (Connection connection = DatabaseManager.getConnection();
@@ -22,6 +22,7 @@ public class SupplierDAO {
             statement.setString(1, supplier.getName());
             statement.setString(2, supplier.getPhone());
             statement.setString(3, supplier.getVillage());
+            statement.setDouble(4, supplier.getOutstandingBalance());
 
             int rowsAffected = statement.executeUpdate();
 
@@ -50,7 +51,7 @@ public class SupplierDAO {
     public List<Supplier> getAllSuppliers() {
         List<Supplier> suppliers = new ArrayList<>();
         String sql = """
-            SELECT id, name, phone, village, created_at, updated_at, sync_status
+            SELECT id, name, phone, village, created_at, updated_at, sync_status, outstanding_balance
             FROM suppliers
             ORDER BY name COLLATE NOCASE ASC
             """;
@@ -72,7 +73,7 @@ public class SupplierDAO {
     // ---------------- GET SUPPLIER BY ID ----------------
     public Supplier getSupplierById(int id) {
         String sql = """
-            SELECT id, name, phone, village, created_at, updated_at, sync_status
+            SELECT id, name, phone, village, created_at, updated_at, sync_status, outstanding_balance
             FROM suppliers
             WHERE id = ?
             """;
@@ -97,7 +98,7 @@ public class SupplierDAO {
     public boolean updateSupplier(Supplier supplier) {
         String sql = """
             UPDATE suppliers
-            SET name = ?, phone = ?, village = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'PENDING'
+            SET name = ?, phone = ?, village = ?, outstanding_balance = ?, updated_at = CURRENT_TIMESTAMP, sync_status = 'PENDING'
             WHERE id = ?
             """;
 
@@ -107,7 +108,8 @@ public class SupplierDAO {
             statement.setString(1, supplier.getName());
             statement.setString(2, supplier.getPhone());
             statement.setString(3, supplier.getVillage());
-            statement.setInt(4, supplier.getId());
+            statement.setDouble(4, supplier.getOutstandingBalance());
+            statement.setInt(5, supplier.getId());
 
             int rows = statement.executeUpdate();
             if (rows > 0) {
@@ -172,7 +174,7 @@ public class SupplierDAO {
 
         String pattern = "%" + query.trim() + "%";
         String sql = """
-            SELECT id, name, phone, village, created_at, updated_at, sync_status
+            SELECT id, name, phone, village, created_at, updated_at, sync_status, outstanding_balance
             FROM suppliers
             WHERE name LIKE ? OR phone LIKE ? OR village LIKE ?
             ORDER BY name COLLATE NOCASE ASC
@@ -230,7 +232,28 @@ public class SupplierDAO {
         return 0;
     }
 
+    public double getTotalOutstandingBalance() {
+        String sql = "SELECT COALESCE(SUM(outstanding_balance), 0.0) FROM suppliers";
+
+        try (Connection connection = DatabaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet rs = statement.executeQuery()) {
+
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error calculating supplier outstanding balance: " + e.getMessage());
+        }
+        return 0.0;
+    }
+
     private Supplier mapResultSetToSupplier(ResultSet rs) throws SQLException {
+        double balance = 0.0;
+        try {
+            balance = rs.getDouble("outstanding_balance");
+        } catch (SQLException ignored) {
+        }
         return new Supplier(
                 rs.getInt("id"),
                 rs.getString("name"),
@@ -238,7 +261,8 @@ public class SupplierDAO {
                 rs.getString("village"),
                 rs.getString("created_at"),
                 rs.getString("updated_at"),
-                rs.getString("sync_status")
+                rs.getString("sync_status"),
+                balance
         );
     }
 }

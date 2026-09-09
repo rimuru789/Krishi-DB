@@ -88,31 +88,33 @@ public class Sidebar extends JPanel implements I18n.LocaleChangeListener {
         // BUSINESS SECTION
         businessSectionLabel = createSectionLabel(I18n.get("nav.business"));
         navigation.add(businessSectionLabel);
-        navigation.add(Box.createVerticalStrut(8));
+        navigation.add(Box.createVerticalStrut(6));
 
         navigation.add(createNavBtn("NEW_ENTRY", "＋", "nav.new_entry"));
         navigation.add(createNavBtn("NEW_SALE", "▣", "nav.new_sale"));
         navigation.add(createNavBtn("INVENTORY", "□", "nav.inventory"));
         navigation.add(createNavBtn("CUSTOMERS", "♙", "nav.customers"));
+        navigation.add(createNavBtn("SUPPLIERS", "♟", "nav.suppliers"));
+        navigation.add(createNavBtn("PURCHASES", "📦", "nav.purchases"));
         navigation.add(createNavBtn("EXPENSES", "₹", "nav.expenses"));
         navigation.add(createNavBtn("TRANSACTIONS", "≡", "nav.transactions"));
 
-        navigation.add(Box.createVerticalStrut(20));
+        navigation.add(Box.createVerticalStrut(14));
 
         // INSIGHTS SECTION
         insightsSectionLabel = createSectionLabel(I18n.get("nav.insights"));
         navigation.add(insightsSectionLabel);
-        navigation.add(Box.createVerticalStrut(8));
+        navigation.add(Box.createVerticalStrut(6));
 
         navigation.add(createNavBtn("REPORTS", "▥", "nav.reports"));
         navigation.add(createNavBtn("MARKET_PRICES", "↗", "nav.market_prices"));
 
-        navigation.add(Box.createVerticalStrut(20));
+        navigation.add(Box.createVerticalStrut(14));
 
         // SYSTEM SECTION
         systemSectionLabel = createSectionLabel(I18n.get("nav.system"));
         navigation.add(systemSectionLabel);
-        navigation.add(Box.createVerticalStrut(8));
+        navigation.add(Box.createVerticalStrut(6));
 
         navigation.add(createNavBtn("SYNC", "↻", "nav.sync"));
         navigation.add(createNavBtn("SETTINGS", "⚙", "nav.settings"));
@@ -122,8 +124,8 @@ public class Sidebar extends JPanel implements I18n.LocaleChangeListener {
 
     private JButton createNavBtn(String pageKey, String icon, String i18nKey) {
         JButton button = new JButton(icon + "   " + I18n.get(i18nKey));
-        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        button.setPreferredSize(new Dimension(220, 44));
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        button.setPreferredSize(new Dimension(220, 38));
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setForeground(textColor);
         button.setBackground(buttonColor);

@@ -9,6 +9,7 @@ public class Customer {
     private String createdAt;
     private String updatedAt;
     private String syncStatus;
+    private double outstandingBalance = 0.0;
 
     // Constructor for new customer creation
     public Customer(String name, String phone, String village) {
@@ -16,6 +17,7 @@ public class Customer {
         this.phone = phone;
         this.village = village;
         this.syncStatus = "PENDING";
+        this.outstandingBalance = 0.0;
     }
 
     // Constructor for reading existing customer from SQLite
@@ -28,6 +30,19 @@ public class Customer {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.syncStatus = syncStatus;
+        this.outstandingBalance = 0.0;
+    }
+
+    public Customer(int id, String name, String phone, String village,
+                    String createdAt, String updatedAt, String syncStatus, double outstandingBalance) {
+        this.id = id;
+        this.name = name;
+        this.phone = phone;
+        this.village = village;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.syncStatus = syncStatus;
+        this.outstandingBalance = outstandingBalance;
     }
 
     public int getId() {
@@ -84,6 +99,14 @@ public class Customer {
 
     public void setSyncStatus(String syncStatus) {
         this.syncStatus = syncStatus;
+    }
+
+    public double getOutstandingBalance() {
+        return outstandingBalance;
+    }
+
+    public void setOutstandingBalance(double outstandingBalance) {
+        this.outstandingBalance = outstandingBalance;
     }
 
     @Override
