@@ -100,6 +100,10 @@ public class Supplier {
         return outstandingBalance;
     }
 
+    public double getOutstandingPayable() {
+        return outstandingBalance;
+    }
+
     public void setOutstandingBalance(double outstandingBalance) {
         this.outstandingBalance = Math.round(outstandingBalance * 100.0) / 100.0;
     }

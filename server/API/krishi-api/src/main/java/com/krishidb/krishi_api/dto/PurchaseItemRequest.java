@@ -1,8 +1,11 @@
 package com.krishidb.krishi_api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 public class PurchaseItemRequest {
     private Long productId;
     private double quantity;
+    @JsonAlias({"unitPrice", "price", "unit_price"})
     private double pricePerUnit;
 
     public PurchaseItemRequest() {
@@ -36,5 +39,13 @@ public class PurchaseItemRequest {
 
     public void setPricePerUnit(double pricePerUnit) {
         this.pricePerUnit = pricePerUnit;
+    }
+
+    public double getUnitPrice() {
+        return pricePerUnit;
+    }
+
+    public void setUnitPrice(double unitPrice) {
+        this.pricePerUnit = unitPrice;
     }
 }

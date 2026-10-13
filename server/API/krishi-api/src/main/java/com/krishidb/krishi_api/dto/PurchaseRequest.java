@@ -1,11 +1,13 @@
 package com.krishidb.krishi_api.dto;
 
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 public class PurchaseRequest {
     private Long supplierId;
     private String supplierName;
     private String invoiceNumber;
+    @JsonAlias({"paymentStatus", "payment_status", "payment_mode"})
     private String paymentMethod; // CASH, UPI, CREDIT
     private String notes;
     private List<PurchaseItemRequest> items;

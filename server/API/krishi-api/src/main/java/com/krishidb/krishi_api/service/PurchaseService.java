@@ -63,6 +63,11 @@ public class PurchaseService {
             paymentMethod = "CASH";
         } else {
             paymentMethod = paymentMethod.trim().toUpperCase();
+            if (paymentMethod.contains("CREDIT")) {
+                paymentMethod = "CREDIT";
+            } else if (paymentMethod.contains("CASH") || paymentMethod.contains("PAID")) {
+                paymentMethod = "CASH";
+            }
         }
         purchase.setPaymentMethod(paymentMethod);
 

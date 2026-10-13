@@ -104,6 +104,10 @@ public class PurchaseItem {
         this.subtotal = Math.round(this.quantity * this.pricePerUnit * 100.0) / 100.0;
     }
 
+    public double getUnitPrice() {
+        return pricePerUnit;
+    }
+
     public double getSubtotal() {
         return subtotal;
     }

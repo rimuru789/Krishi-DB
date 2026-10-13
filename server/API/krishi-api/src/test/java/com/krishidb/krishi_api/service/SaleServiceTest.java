@@ -129,4 +129,52 @@ class SaleServiceTest {
         req.setItems(List.of());
         assertThrows(IllegalArgumentException.class, () -> saleService.createSale(req));
     }
+
+    @Test
+    void testCreateSale_KhataWithoutRegisteredCustomer_ThrowsException() {
+        SaleRequest req = new SaleRequest();
+        req.setPaymentMethod("KHATA");
+        req.setCustomerId(null);
+        req.setItems(List.of(new SaleItemRequest(1L, 1.0, 100.0)));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> saleService.createSale(req));
+        assertTrue(ex.getMessage().contains("Credit / Khata payment requires a registered customer ID"));
+    }
+
+    @Test
+    void testCreateSale_CashWalkInCustomer_SucceedsWithoutCustomerRecord() {
+        Product p = new Product();
+        p.setId(1L);
+        p.setName("Seed packet");
+        p.setStockQuantity(10.0);
+        p.setSellingPrice(50.0);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        when(saleRepository.save(any(Sale.class))).thenAnswer(i -> {
+            Sale s = i.getArgument(0);
+            s.setId(101L);
+            return s;
+        });
+
+        SaleRequest req = new SaleRequest();
+        req.setCustomerId(null);
+        req.setCustomerName("Walk-in Counter Customer");
+        req.setPaymentMethod("CASH");
+        req.setItems(List.of(new SaleItemRequest(1L, 2.0, 50.0)));
+
+        Sale created = saleService.createSale(req);
+        assertNotNull(created);
+        assertEquals(101L, created.getId());
+        assertEquals(100.0, created.getTotalAmount());
+        assertEquals(8.0, p.getStockQuantity(), "Stock must decrement by 2");
+        verify(customerRepository, never()).save(any());
+    }
+
+    @Test
+    void testSaleItemRequest_UnitPriceCompatibilityGettersAndSetters() {
+        SaleItemRequest req = new SaleItemRequest();
+        req.setUnitPrice(750.0);
+        assertEquals(750.0, req.getPricePerUnit());
+        assertEquals(750.0, req.getUnitPrice());
+    }
 }

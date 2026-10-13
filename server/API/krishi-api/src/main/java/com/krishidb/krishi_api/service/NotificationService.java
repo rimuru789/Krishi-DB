@@ -62,7 +62,7 @@ public class NotificationService {
                 alert.put("type", "CUSTOMER_OUTSTANDING");
                 alert.put("severity", "info");
                 alert.put("title", "Customer Due: " + c.getName());
-                alert.put("message", "Customer '" + c.getName() + "' has an outstanding balance of ₹" + c.getOutstandingBalance());
+                alert.put("message", "Customer '" + c.getName() + "' has an outstanding balance of \u20B9" + c.getOutstandingBalance());
                 alert.put("timestamp", now);
                 alert.put("referenceId", c.getId());
                 notifications.add(alert);
@@ -78,7 +78,7 @@ public class NotificationService {
                 alert.put("type", "SUPPLIER_PAYABLE");
                 alert.put("severity", "info");
                 alert.put("title", "Supplier Payable: " + s.getName());
-                alert.put("message", "Supplier '" + s.getName() + "' has pending payables of ₹" + s.getOutstandingBalance());
+                alert.put("message", "Supplier '" + s.getName() + "' has pending payables of \u20B9" + s.getOutstandingBalance());
                 alert.put("timestamp", now);
                 alert.put("referenceId", s.getId());
                 notifications.add(alert);

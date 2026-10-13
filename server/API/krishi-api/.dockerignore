@@ -1,0 +1,14 @@
+target/
+.git
+.gitignore
+*.log
+.vscode/
+.idea/
+*.md
+krishi-api-test.http
+
+application-local.properties
+local.properties
+*.local.properties
+.env
+.env.properties
