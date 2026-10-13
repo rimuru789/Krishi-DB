@@ -55,6 +55,8 @@ public class SaleDAO {
                         }
                     }
                 }
+            } else if (isCredit) {
+                throw new IllegalArgumentException("Khata / Credit payment requires a valid registered customer.");
             }
 
             // Step 2: Validate product existence and stock availability
@@ -177,7 +179,27 @@ public class SaleDAO {
                 }
             }
 
-            // Step 5: Insert transaction ledger entry
+            // Step 5: If Credit / Khata sale, increase customer outstanding balance
+            if (isCredit && sale.getCustomerId() != null && sale.getCustomerId() > 0) {
+                String updateCustBalSql = """
+                    UPDATE customers
+                    SET outstanding_balance = COALESCE(outstanding_balance, 0.0) + ?,
+                        updated_at = CURRENT_TIMESTAMP,
+                        sync_status = 'PENDING'
+                    WHERE id = ?
+                    """;
+                try (PreparedStatement psCustBal = connection.prepareStatement(updateCustBalSql)) {
+                    psCustBal.setDouble(1, sale.getTotalAmount());
+                    psCustBal.setInt(2, sale.getCustomerId());
+                    int affected = psCustBal.executeUpdate();
+                    if (affected == 0) {
+                        throw new SQLException("Failed to update customer outstanding balance for ID: " + sale.getCustomerId());
+                    }
+                }
+                syncQueueDAO.addToQueue(connection, "customers", sale.getCustomerId(), "UPDATE");
+            }
+
+            // Step 6: Insert transaction ledger entry
             String insertTxSql = """
                 INSERT INTO transactions (transaction_type, reference_id, amount, payment_method, sync_status)
                 VALUES ('SALE', ?, ?, ?, 'PENDING')
@@ -189,10 +211,10 @@ public class SaleDAO {
                 psTx.executeUpdate();
             }
 
-            // Step 6: Queue synchronization record in sync_queue using the same connection
+            // Step 7: Queue synchronization record in sync_queue using the same connection
             syncQueueDAO.addToQueue(connection, "sales", generatedSaleId, "INSERT");
 
-            // Step 7: Atomically commit the transaction
+            // Step 8: Atomically commit the transaction
             connection.commit();
 
             sale.setItems(items);
@@ -350,18 +372,112 @@ public class SaleDAO {
 
     // ---------------- SAFE SALE CANCELLATION / VOID ----------------
     public boolean cancelSale(int saleId) throws Exception {
-        Sale sale = getSaleById(saleId);
-        if (sale == null) {
-            return false;
-        }
-
-        List<SaleItem> items = getSaleItems(saleId);
-
-        Connection connection = DatabaseManager.getConnection();
-        boolean originalAutoCommit = connection.getAutoCommit();
+        Connection connection = null;
+        boolean originalAutoCommit = true;
 
         try {
+            connection = DatabaseManager.getConnection();
+            originalAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
+
+            // Guard against duplicate cancellation or non-existent sale inside transaction
+            String checkSaleSql = "SELECT id, customer_id, total_amount, payment_method FROM sales WHERE id = ?";
+            Integer customerId = null;
+            double totalAmount = 0.0;
+            String paymentMethod = null;
+            try (PreparedStatement psCheck = connection.prepareStatement(checkSaleSql)) {
+                psCheck.setInt(1, saleId);
+                try (ResultSet rsCheck = psCheck.executeQuery()) {
+                    if (!rsCheck.next()) {
+                        connection.rollback();
+                        return false; // Already cancelled or does not exist
+                    }
+                    customerId = rsCheck.getObject("customer_id") != null ? rsCheck.getInt("customer_id") : null;
+                    totalAmount = rsCheck.getDouble("total_amount");
+                    paymentMethod = rsCheck.getString("payment_method");
+                }
+            }
+
+            // Fetch sale items using the transactional connection
+            String selectItemsSql = """
+                SELECT si.id, si.sale_id, si.product_id, p.name AS product_name, p.unit,
+                       si.quantity, si.price_per_unit, si.subtotal
+                FROM sale_items si
+                LEFT JOIN products p ON si.product_id = p.id
+                WHERE si.sale_id = ?
+                ORDER BY si.id ASC
+                """;
+            List<SaleItem> items = new ArrayList<>();
+            try (PreparedStatement psItems = connection.prepareStatement(selectItemsSql)) {
+                psItems.setInt(1, saleId);
+                try (ResultSet rsItems = psItems.executeQuery()) {
+                    while (rsItems.next()) {
+                        items.add(new SaleItem(
+                                rsItems.getInt("id"),
+                                rsItems.getInt("sale_id"),
+                                rsItems.getInt("product_id"),
+                                rsItems.getString("product_name"),
+                                rsItems.getString("unit"),
+                                rsItems.getDouble("quantity"),
+                                rsItems.getDouble("price_per_unit"),
+                                rsItems.getDouble("subtotal")
+                        ));
+                    }
+                }
+            }
+
+            boolean isCredit = paymentMethod != null &&
+                    ("CREDIT".equalsIgnoreCase(paymentMethod.trim()) || "KHATA".equalsIgnoreCase(paymentMethod.trim()));
+
+            // Reverse customer receivable effect for credit/khata sales
+            if (isCredit) {
+                if (customerId == null || customerId <= 0) {
+                    throw new IllegalStateException("Credit sale #" + saleId + " has no associated customer.");
+                }
+
+                String checkCustSql = "SELECT id, outstanding_balance FROM customers WHERE id = ?";
+                double currentBalance;
+                try (PreparedStatement psCust = connection.prepareStatement(checkCustSql)) {
+                    psCust.setInt(1, customerId);
+                    try (ResultSet rsCust = psCust.executeQuery()) {
+                        if (!rsCust.next()) {
+                            throw new IllegalStateException("Customer with ID " + customerId + " not found for credit sale cancellation.");
+                        }
+                        currentBalance = rsCust.getDouble("outstanding_balance");
+                    }
+                }
+
+                // Accounting integrity: Check if customer balance can safely cover the reversal.
+                // If currentBalance < totalAmount, customer payments have been recorded against the customer's account.
+                // Since payments in the data model are recorded globally against customer_id rather than individual
+                // invoices, blindly deducting the sale amount would drop the balance below zero or wipe out recorded payments.
+                if (currentBalance + 0.0001 < totalAmount) {
+                    throw new IllegalStateException(String.format(
+                            "Cannot cancel credit sale #%d: customer outstanding balance (Rs. %.2f) is less than sale amount (Rs. %.2f). " +
+                            "Customer payments have been recorded against this account.",
+                            saleId, currentBalance, totalAmount
+                    ));
+                }
+
+                double newBalance = Math.round((currentBalance - totalAmount) * 100.0) / 100.0;
+                String updateCustSql = """
+                    UPDATE customers
+                    SET outstanding_balance = ?,
+                        updated_at = CURRENT_TIMESTAMP,
+                        sync_status = 'PENDING'
+                    WHERE id = ?
+                    """;
+                try (PreparedStatement psUpdateCust = connection.prepareStatement(updateCustSql)) {
+                    psUpdateCust.setDouble(1, newBalance);
+                    psUpdateCust.setInt(2, customerId);
+                    int affected = psUpdateCust.executeUpdate();
+                    if (affected == 0) {
+                        throw new SQLException("Failed to update customer balance during credit sale cancellation.");
+                    }
+                }
+
+                syncQueueDAO.addToQueue(connection, "customers", customerId, "UPDATE");
+            }
 
             // 1. Restore product inventory
             String restoreStockSql = """
@@ -410,18 +526,25 @@ public class SaleDAO {
             return true;
 
         } catch (Exception e) {
-            try {
-                connection.rollback();
-            } catch (SQLException rollbackEx) {
-                rollbackEx.printStackTrace();
+            if (connection != null) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
             }
             throw e;
         } finally {
-            try {
-                connection.setAutoCommit(originalAutoCommit);
-                connection.close();
-            } catch (SQLException closeEx) {
-                closeEx.printStackTrace();
+            if (connection != null) {
+                try {
+                    connection.setAutoCommit(originalAutoCommit);
+                } catch (SQLException ignored) {
+                }
+                try {
+                    connection.close();
+                } catch (SQLException closeEx) {
+                    closeEx.printStackTrace();
+                }
             }
         }
     }

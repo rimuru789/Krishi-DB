@@ -194,6 +194,10 @@ public class DesktopClientSuiteTest {
     @Test
     @Order(7)
     public void testReportsAndCsvExport() throws Exception {
+        ProductDAO pDao = new ProductDAO();
+        if (pDao.getAllProducts().isEmpty()) {
+            pDao.addProduct(new Product("Report Test Product", "Seeds", "kg", 100.0, 10.0, 2.0));
+        }
         ReportDAO reportDAO = new ReportDAO();
         ReportDAO.ReportResult stockReport = reportDAO.getInventoryReport();
         assertNotNull(stockReport);

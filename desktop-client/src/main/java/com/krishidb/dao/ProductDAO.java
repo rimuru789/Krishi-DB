@@ -23,55 +23,69 @@ public class ProductDAO {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection connection = DatabaseManager.getConnection();
-             PreparedStatement statement =
-        connection.prepareStatement(
-                sql,
-                Statement.RETURN_GENERATED_KEYS
-        );) {
+        Connection connection = null;
+        boolean originalAutoCommit = true;
 
-            statement.setString(1, product.getName());
-            statement.setString(2, product.getCategory());
-            statement.setString(3, product.getUnit());
-            statement.setDouble(4, product.getSellingPrice());
-            statement.setDouble(5, product.getStockQuantity());
-            statement.setDouble(6, product.getLowStockLevel());
-            statement.setString(7, product.getSyncStatus());
+        try {
+            connection = DatabaseManager.getConnection();
+            originalAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
 
-            int rowsAffected = statement.executeUpdate();
+            int productId;
+            try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                statement.setString(1, product.getName());
+                statement.setString(2, product.getCategory());
+                statement.setString(3, product.getUnit());
+                statement.setDouble(4, product.getSellingPrice());
+                statement.setDouble(5, product.getStockQuantity());
+                statement.setDouble(6, product.getLowStockLevel());
+                statement.setString(7, product.getSyncStatus());
 
+                int rowsAffected = statement.executeUpdate();
+                if (rowsAffected <= 0) {
+                    connection.rollback();
+                    return false;
+                }
 
-if(rowsAffected > 0){
+                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        productId = generatedKeys.getInt(1);
+                        product.setId(productId);
+                    } else {
+                        throw new SQLException("Failed to retrieve generated product ID.");
+                    }
+                }
+            }
 
-    ResultSet generatedKeys = statement.getGeneratedKeys();
+            SyncQueueDAO queueDAO = new SyncQueueDAO();
+            queueDAO.addToQueue(connection, "products", productId, "INSERT");
 
-    if(generatedKeys.next()){
-
-        int productId = generatedKeys.getInt(1);
-
-
-        SyncQueueDAO queueDAO = new SyncQueueDAO();
-
-        queueDAO.addToQueue(
-                "products",
-                productId,
-                "INSERT"
-        );
-
-    }
-
-    return true;
-}
-
-
-return false;
+            connection.commit();
+            return true;
 
         } catch (SQLException e) {
-
-            System.out.println("Failed to add product.");
+            if (connection != null) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackEx) {
+                    rollbackEx.printStackTrace();
+                }
+            }
+            System.err.println("Failed to add product: " + e.getMessage());
             e.printStackTrace();
-
             return false;
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.setAutoCommit(originalAutoCommit);
+                } catch (SQLException ignored) {
+                }
+                try {
+                    connection.close();
+                } catch (SQLException closeEx) {
+                    closeEx.printStackTrace();
+                }
+            }
         }
     }
 

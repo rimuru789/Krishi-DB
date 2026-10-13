@@ -144,10 +144,29 @@ public class SupplierDAO {
         return 0;
     }
 
+    // ---------------- CHECK LINKED TRANSACTIONS (FOREIGN KEY INTEGRITY) ----------------
+    public int getLinkedTransactionsCount(int supplierId) {
+        String sql = "SELECT COUNT(*) FROM transactions WHERE transaction_type = 'SUPPLIER_PAYMENT' AND reference_id = ?";
+
+        try (Connection connection = DatabaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, supplierId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking linked transactions for supplier " + supplierId + ": " + e.getMessage());
+        }
+        return 0;
+    }
+
     // ---------------- DELETE SUPPLIER ----------------
     public boolean deleteSupplier(int id) {
-        // Enforce referential safety before deleting
-        if (getLinkedPurchasesCount(id) > 0) {
+        // Enforce referential safety before deleting: block if linked purchases or payment transactions exist
+        if (getLinkedPurchasesCount(id) > 0 || getLinkedTransactionsCount(id) > 0) {
             return false;
         }
 

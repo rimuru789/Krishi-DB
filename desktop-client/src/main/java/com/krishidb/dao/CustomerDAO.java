@@ -144,10 +144,29 @@ public class CustomerDAO {
         return 0;
     }
 
+    // ---------------- CHECK LINKED TRANSACTIONS (FOREIGN KEY INTEGRITY) ----------------
+    public int getLinkedTransactionsCount(int customerId) {
+        String sql = "SELECT COUNT(*) FROM transactions WHERE transaction_type = 'CUSTOMER_PAYMENT' AND reference_id = ?";
+
+        try (Connection connection = DatabaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, customerId);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking linked transactions for customer " + customerId + ": " + e.getMessage());
+        }
+        return 0;
+    }
+
     // ---------------- DELETE CUSTOMER ----------------
     public boolean deleteCustomer(int id) {
-        // Enforce referential safety before deleting
-        if (getLinkedSalesCount(id) > 0) {
+        // Enforce referential safety before deleting: block if linked sales or payment transactions exist
+        if (getLinkedSalesCount(id) > 0 || getLinkedTransactionsCount(id) > 0) {
             return false;
         }
 

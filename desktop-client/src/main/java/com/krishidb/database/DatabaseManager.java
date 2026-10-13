@@ -12,6 +12,15 @@ import java.sql.SQLException;
 public class DatabaseManager {
 
     private static final String DATABASE_NAME = "krishidb.db";
+    private static Path customDatabasePath = null;
+
+    public static synchronized void setCustomDatabasePath(Path path) {
+        customDatabasePath = path;
+    }
+
+    public static synchronized void resetDatabasePath() {
+        customDatabasePath = null;
+    }
 
     public static Connection getConnection() throws SQLException {
         try {
@@ -29,6 +38,23 @@ public class DatabaseManager {
     }
 
     public static Path resolveDatabasePath() {
+        if (customDatabasePath != null) {
+            return customDatabasePath;
+        }
+
+        String sysProp = System.getProperty("krishidb.database.path");
+        if (sysProp != null && !sysProp.trim().isEmpty()) {
+            Path testPath = Paths.get(sysProp.trim()).toAbsolutePath().normalize();
+            try {
+                if (testPath.getParent() != null) {
+                    Files.createDirectories(testPath.getParent());
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to create database directory: " + testPath.getParent(), e);
+            }
+            return testPath;
+        }
+
         Path currentDir = Paths.get("").toAbsolutePath().normalize();
         Path[] candidates = {
             currentDir.resolve("data"),

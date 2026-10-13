@@ -305,7 +305,10 @@ public class TransactionDAO {
         String sql = """
             SELECT COALESCE(SUM(amount), 0.0)
             FROM transactions
-            WHERE transaction_type IN ('SALE', 'CUSTOMER_PAYMENT')
+            WHERE (
+                (transaction_type = 'SALE' AND (payment_method IS NULL OR UPPER(TRIM(payment_method)) NOT IN ('CREDIT', 'KHATA')))
+                OR transaction_type = 'CUSTOMER_PAYMENT'
+            )
             """;
         return fetchAggregateSum(sql);
     }
@@ -314,7 +317,10 @@ public class TransactionDAO {
         String sql = """
             SELECT COALESCE(SUM(amount), 0.0)
             FROM transactions
-            WHERE transaction_type IN ('PURCHASE', 'EXPENSE', 'SUPPLIER_PAYMENT')
+            WHERE (
+                (transaction_type = 'PURCHASE' AND (payment_method IS NULL OR UPPER(TRIM(payment_method)) NOT IN ('CREDIT', 'KHATA')))
+                OR transaction_type IN ('EXPENSE', 'SUPPLIER_PAYMENT')
+            )
             """;
         return fetchAggregateSum(sql);
     }
