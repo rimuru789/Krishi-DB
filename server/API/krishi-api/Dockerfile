@@ -1,23 +1,16 @@
 # ==========================================
 # Stage 1: Build with Maven & Java 21
 # ==========================================
-FROM eclipse-temurin:21-jdk-jammy AS builder
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# Copy Maven wrapper and POM files first for caching
-COPY mvnw pom.xml ./
-COPY .mvn .mvn
-
-# Ensure execution permissions and fix potential Windows CRLF line endings
-RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
-
-# Download project dependencies (cached layer)
-RUN ./mvnw dependency:go-offline -B || true
-
-# Copy source code and build production jar (skipping tests for container image packaging)
+# Copy POM and source code directly
+COPY pom.xml ./
 COPY src src
-RUN ./mvnw clean package -DskipTests -B
+
+# Build production jar using pre-installed Maven
+RUN mvn -B clean package -DskipTests
 
 # ==========================================
 # Stage 2: Lean Production Runtime (Java 21 JRE)
